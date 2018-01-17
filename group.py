@@ -73,6 +73,7 @@ class GenericBot(Tox):
         if opts is not None:
             super(GenericBot, self).__init__(opts)
 
+        self.to_save = []
         self.config_name = config_name
         self.self_set_name(name)
         self.connect()
@@ -85,10 +86,18 @@ class GenericBot(Tox):
         self.save_settings(self.config_name)
 
     def save_settings(self, conf):
-        pass
+        with open(conf, 'wb') as f:
+            for save in self.to_save:
+                pickle.dump(getattr(self, save), f)
 
     def load_settings(self, conf):
-        pass
+        try:
+            with open(conf, 'rb') as f:
+                for save in self.to_save:
+                    setattr(self, save, pickle.load(f))
+        except:
+            pass
+
 
     def connect(self):
         self.bootstrap(SERVER[0], SERVER[1], SERVER[2])
@@ -174,19 +183,9 @@ class GroupBot(GenericBot):
         self.groups = { groupId: ToxGroup(self, groupId) }
         # PK -> set(groupId)
         self.autoinvite = {}
+        self.to_save = ['autoinvite']
 
         print('ID: %s' % self.self_get_address())
-
-    def save_settings(self, conf):
-        with open(conf, 'wb') as f:
-            pickle.dump(self.autoinvite, f)
-
-    def load_settings(self, conf):
-        try:
-            with open(conf, 'rb') as f:
-                self.autoinvite = pickle.load(f)
-        except:
-            pass
 
     def cmd_id(self, friendId):
         '''1 Print my Tox ID '''
