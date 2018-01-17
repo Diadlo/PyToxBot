@@ -28,13 +28,21 @@ from pytox import Tox
 from time import sleep
 from os.path import exists
 
-SERVER = [
-    "192.210.149.121",
-    33445,
-    "F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67"
-]
 
 DATA = 'groupbot.tox'
+
+
+class ToxServer():
+    def __init__(self, ip, port, pk):
+        self.ip = ip
+        self.port = port
+        self.pk = pk
+
+
+SERVERS = [
+    ToxServer("192.210.149.121", 33445, "F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67")
+]
+
 
 class ToxOptions():
     def __init__(self):
@@ -91,9 +99,9 @@ class GenericBot(Tox):
         except:
             pass
 
-
     def connect(self):
-        self.bootstrap(SERVER[0], SERVER[1], SERVER[2])
+        server = SERVERS[0]
+        self.bootstrap(server.ip, server.port, server.pk)
 
     def start(self):
         checked = False
@@ -136,8 +144,8 @@ class ToxGroup():
         type = 'Text'
         peers = self.tox.conference_peer_count(id)
         title = self.tox.conference_get_title(id)
-        res = 'Group %d | %s | Peers: %d | Title: %s' % (id, type, peers, title)
-        return res
+        template = 'Group %d | %s | Peers: %d | Title: %s'
+        return template % (id, type, peers, title)
 
 
 class CommandInfo():
@@ -173,7 +181,7 @@ class GroupBot(GenericBot):
         super(GroupBot, self).__init__('PyGroupBot', 'autoinvite.conf', opts)
 
         groupId = self.conference_new()
-        self.groups = { groupId: ToxGroup(self, groupId) }
+        self.groups = {groupId: ToxGroup(self, groupId)}
         # PK -> set(groupId)
         self.autoinvite = {}
         self.to_save = ['autoinvite']
@@ -188,14 +196,14 @@ class GroupBot(GenericBot):
         '''2 Print list all avaliable chats '''
         groups_info = [str(g) for (_, g) in self.groups.items()]
         text = '\n'.join(groups_info)
-        self.answer(friendId, text);
+        self.answer(friendId, text)
 
     def cmd_help(self, friendId):
         '''3 Print this text '''
         functions = filter(lambda s: s.startswith('cmd_'), dir(self))
         commands = []
         for f in functions:
-           commands.append(CommandInfo(self, f))
+            commands.append(CommandInfo(self, f))
 
         commands.sort(key=CommandInfo.order)
         text = 'Usage:\n'
@@ -227,7 +235,7 @@ class GroupBot(GenericBot):
         if password != group.password:
             self.answer(friendId, "Wrong password")
             return
-            
+
         pk = self.friend_get_public_key(friendId)
         self.autoinvite[pk].add(groupId)
         self.conference_invite(friendId, groupId)
@@ -251,7 +259,8 @@ class GroupBot(GenericBot):
             try:
                 self.conference_invite(friendId, groupId)
             except:
-                print("Can't invite %d in group with id %d" % friendId, groupId)
+                error = "Can't invite %d in group with id %d"
+                print(error % (friendId, groupId))
 
     def on_friend_message(self, friendId, type, message):
         temp = message.split(' ')
@@ -272,7 +281,8 @@ class GroupBot(GenericBot):
         try:
             method(friendId, *params)
         except Exception as e:
-            self.answer(friendId, 'Error while handle %s (%s)' % (name, str(e)))
+            error = 'Error while handle %s (%s)' % (name, str(e))
+            self.answer(friendId, error)
 
 opts = None
 opts = ToxOptions()
