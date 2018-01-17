@@ -191,6 +191,12 @@ class GroupBot(GenericBot):
         '''1 Print my Tox ID '''
         self.answer(friendId, self.self_get_address())
 
+    def cmd_list(self, friendId):
+        '''2 Print list all avaliable chats '''
+        groups_info = [str(g) for (_, g) in self.groups.items()]
+        text = '\n'.join(groups_info)
+        self.answer(friendId, text);
+
     def cmd_help(self, friendId):
         '''3 Print this text '''
         functions = filter(lambda s: s.startswith('cmd_'), dir(self))
@@ -205,12 +211,6 @@ class GroupBot(GenericBot):
 
         self.answer(friendId, text)
 
-    def cmd_group(self, friendId, password=''):
-        '''5 Create new group '''
-        groupId = self.conference_new()
-        self.groups[groupId] = ToxGroup(self, groupId, password)
-        self.conference_invite(friendId, groupId)
-
     def cmd_invite(self, friendId, groupId=0, password=''):
         '''4 Invite in chat with groupId. Default id is 0 '''
         groupId = int(groupId)
@@ -221,11 +221,11 @@ class GroupBot(GenericBot):
 
         self.conference_invite(friendId, groupId)
 
-    def cmd_list(self, friendId):
-        '''2 Print list all avaliable chats '''
-        groups_info = [str(g) for (_, g) in self.groups.items()]
-        text = '\n'.join(groups_info)
-        self.answer(friendId, text);
+    def cmd_group(self, friendId, password=''):
+        '''5 Create new group '''
+        groupId = self.conference_new()
+        self.groups[groupId] = ToxGroup(self, groupId, password)
+        self.conference_invite(friendId, groupId)
 
     def cmd_autoinvite(self, friendId, groupId=0, password=''):
         '''6 Autoinvite in group. Default id is 0, try without password '''
