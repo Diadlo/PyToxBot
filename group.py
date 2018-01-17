@@ -152,8 +152,12 @@ class GroupBot(GenericBot):
     def answer(self, friendId, text):
         self.friend_send_message(friendId, Tox.MESSAGE_TYPE_NORMAL, text)
 
+    def cmd_id(self, friendId):
+        self.answer(friendId, self.self_get_address())
+
     def cmd_help(self, id):
         self.answer(id, '''Usage:
+    id : Print my Tox ID
     help : Print this text
     list : Print list all avaliable chats
     invite [<groupId> [<password>]] : Invite in chat with groupId. Default id is 0
