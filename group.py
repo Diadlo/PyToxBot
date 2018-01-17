@@ -20,6 +20,7 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
+import inspect
 import pickle
 import sys
 from pytox import Tox
@@ -68,12 +69,26 @@ def load_from_file(fname):
 
 
 class GenericBot(Tox):
-    def __init__(self, name, opts=None):
+    def __init__(self, name, config_name, opts=None):
         if opts is not None:
             super(GenericBot, self).__init__(opts)
 
+        self.config_name = config_name
         self.self_set_name(name)
         self.connect()
+
+    def __enter__(self):
+        self.load_settings(self.config_name)
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.save_settings(self.config_name)
+
+    def save_settings(self, conf):
+        pass
+
+    def load_settings(self, conf):
+        pass
 
     def connect(self):
         self.bootstrap(SERVER[0], SERVER[1], SERVER[2])
@@ -104,6 +119,10 @@ class GenericBot(Tox):
         self.friend_add_norequest(pk)
         save_to_file(self, DATA)
 
+    def answer(self, friendId, text):
+        self.friend_send_message(friendId, Tox.MESSAGE_TYPE_NORMAL, text)
+
+
 class ToxGroup():
     def __init__(self, tox, groupId, password=''):
         self.tox = tox
@@ -118,25 +137,45 @@ class ToxGroup():
         res = 'Group %d | %s | Peers: %d | Title: %s' % (id, type, peers, title)
         return res
 
-_AUTOINVITE_ = 'autoinvite.conf'
+
+class CommandInfo():
+    def __init__(self, object, func):
+        # Remove 'cmd_'
+        self.name = func[4:]
+
+        cmd = getattr(object, func)
+        temp = cmd.__doc__.split(' ', 1)
+        try:
+            self._order = int(temp[0])
+            self.doc = temp[1].strip()
+        except:
+            self._order = 0
+            self.doc = cmd.__doc__.strip()
+
+        # Skip 'self' and 'friendId'
+        self.vars = inspect.getargspec(cmd)[0][2:]
+
+    def order(self):
+        return self._order
+
+    def __str__(self):
+        vars = ''
+        for v in vars:
+            vars += '<%s> ' % v
+
+        return '%s%s : %s' % (self.name, vars, self.doc)
+
 
 class GroupBot(GenericBot):
     def __init__(self, opts=None):
-        super(GroupBot, self).__init__('PyGroupBot', opts)
+        super(GroupBot, self).__init__('PyGroupBot', 'autoinvite.conf', opts)
 
         groupId = self.conference_new()
         self.groups = { groupId: ToxGroup(self, groupId) }
         # PK -> set(groupId)
         self.autoinvite = {}
-        self.load_settings(_AUTOINVITE_)
 
         print('ID: %s' % self.self_get_address())
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self.save_settings(_AUTOINVITE_)
 
     def save_settings(self, conf):
         with open(conf, 'wb') as f:
@@ -149,31 +188,32 @@ class GroupBot(GenericBot):
         except:
             pass
 
-    def answer(self, friendId, text):
-        self.friend_send_message(friendId, Tox.MESSAGE_TYPE_NORMAL, text)
-
     def cmd_id(self, friendId):
-        ''' Print my Tox ID '''
+        '''1 Print my Tox ID '''
         self.answer(friendId, self.self_get_address())
 
-    def cmd_help(self, id):
-        ''' Print this text '''
+    def cmd_help(self, friendId):
+        '''3 Print this text '''
+        functions = filter(lambda s: s.startswith('cmd_'), dir(self))
+        commands = []
+        for f in functions:
+           commands.append(CommandInfo(self, f))
+
+        commands.sort(key=CommandInfo.order)
         text = 'Usage:\n'
-        commands = filter(lambda s: s.startswith('cmd_'), dir(self))
-        for c in commands:
-            name = c[4:]
-            doc = getattr(self, c).__doc__
-            text += '%s : %s\n' % (name, doc)
-        self.answer(id, text)
+        for cmd in commands:
+            text += '   %s\n' % str(cmd)
+
+        self.answer(friendId, text)
 
     def cmd_group(self, friendId, password=''):
-        ''' Create new group '''
+        '''5 Create new group '''
         groupId = self.conference_new()
         self.groups[groupId] = ToxGroup(self, groupId, password)
         self.conference_invite(friendId, groupId)
 
     def cmd_invite(self, friendId, groupId=0, password=''):
-        ''' [<groupId> [<password>]] Invite in chat with groupId. Default id is 0 '''
+        '''4 Invite in chat with groupId. Default id is 0 '''
         groupId = int(groupId)
         group = self.groups[groupId]
         if password != group.password:
@@ -183,13 +223,13 @@ class GroupBot(GenericBot):
         self.conference_invite(friendId, groupId)
 
     def cmd_list(self, friendId):
-        ''' Print list all avaliable chats '''
+        '''2 Print list all avaliable chats '''
         groups_info = [str(g) for (_, g) in self.groups.items()]
         text = '\n'.join(groups_info)
         self.answer(friendId, text);
 
     def cmd_autoinvite(self, friendId, groupId=0, password=''):
-        ''' [<groupId> [<password>]] Autoinvite in group. Default id is 0 '''
+        '''6 Autoinvite in group. Default id is 0, try without password '''
         groupId = int(groupId)
         group = self.groups[groupId]
         if password != group.password:
@@ -201,7 +241,7 @@ class GroupBot(GenericBot):
         self.conference_invite(friendId, groupId)
 
     def cmd_deautoinvite(self, friendId, groupId=0):
-        ''' [<groupId>] : Disable autoinvite in group. Default id is 0 '''
+        '''7 Disable autoinvite in group. Default id is 0 '''
         groupId = int(groupId)
         pk = self.friend_get_public_key(friendId)
         self.autoinvite[pk].remove(groupId)
@@ -222,7 +262,6 @@ class GroupBot(GenericBot):
                 print("Can't invite %d in group with id %d" % friendId, groupId)
 
     def on_friend_message(self, friendId, type, message):
-        name = self.friend_get_name(friendId)
         temp = message.split(' ')
         name = temp[0]
         params = temp[1:]
@@ -230,14 +269,18 @@ class GroupBot(GenericBot):
         try:
             method = getattr(self, 'cmd_' + name)
         except AttributeError:
-            self.answer(friendId, '%s is unsupported command' % name)
-            self.cmd_help(friendId)
-            return
+            try:
+                self.answer(friendId, '%s is unsupported command' % name)
+                self.cmd_help(friendId)
+            except Exception as e:
+                print(str(e))
+            finally:
+                return
 
         try:
             method(friendId, *params)
-        except:
-            self.answer(friendId, 'Error while handle %s' % name)
+        except Exception as e:
+            self.answer(friendId, 'Error while handle %s (%s)' % (name, str(e)))
 
 opts = None
 opts = ToxOptions()
