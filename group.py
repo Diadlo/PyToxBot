@@ -104,19 +104,6 @@ class GenericBot(Tox):
         self.friend_add_norequest(pk)
         save_to_file(self, DATA)
 
-class BotCommand():
-    def __init__(self, friendId, text):
-        self.friendId = friendId
-        temp = text.split(' ')
-        self.name = temp[0]
-        self.params = temp[1:]
-
-    def to_obj(self, _class):
-        try:
-            return _class(*self.params)
-        except:
-            return None
-
 class ToxGroup():
     def __init__(self, tox, groupId, password=''):
         self.tox = tox
@@ -131,11 +118,6 @@ class ToxGroup():
         res = 'Group %d | %s | Peers: %d | Title: %s' % (id, type, peers, title)
         return res
 
-class GroupInfo():
-    def __init__(self, groupId=0, password=''):
-        self.groupId = int(groupId)
-        self.password = password
-
 _AUTOINVITE_ = 'autoinvite.conf'
 
 class GroupBot(GenericBot):
@@ -144,7 +126,7 @@ class GroupBot(GenericBot):
 
         groupId = self.conference_new()
         self.groups = { groupId: ToxGroup(self, groupId) }
-        # friendId -> set(groupId)
+        # PK -> set(groupId)
         self.autoinvite = {}
         self.load_settings(_AUTOINVITE_)
 
@@ -167,11 +149,11 @@ class GroupBot(GenericBot):
         except:
             pass
 
-    def answer(self, cmd, text):
-        self.friend_send_message(cmd.friendId, Tox.MESSAGE_TYPE_NORMAL, text)
+    def answer(self, friendId, text):
+        self.friend_send_message(friendId, Tox.MESSAGE_TYPE_NORMAL, text)
 
-    def cmd_help(self, cmd):
-        self.answer(cmd, '''Usage: 
+    def cmd_help(self, id):
+        self.answer(id, '''Usage:
     help : Print this text
     list : Print list all avaliable chats
     invite [<groupId> [<password>]] : Invite in chat with groupId. Default id is 0
@@ -180,46 +162,50 @@ class GroupBot(GenericBot):
     deautoinvite [<groupId>] : Disable autoinvite in group. Default id is 0
 ''')
 
-    def cmd_group(self, cmd):
-        password = '' if len(cmd.params) == 0 else cmd.params[0]
+    def cmd_group(self, friendId, password=''):
         groupId = self.conference_new()
         self.groups[groupId] = ToxGroup(self, groupId, password)
+        self.conference_invite(friendId, groupId)
 
-    def cmd_invite(self, cmd):
-        info = cmd.to_obj(GroupInfo)
-        group = self.groups[info.groupId]
-        if info.password != group.password:
-            self.answer(cmd, "Wrong password")
+    def cmd_invite(self, friendId, groupId=0, password=''):
+        groupId = int(groupId)
+        group = self.groups[groupId]
+        if password != group.password:
+            self.answer(friendId, "Wrong password")
             return
 
-        self.conference_invite(cmd.friendId, info.groupId)
+        self.conference_invite(friendId, groupId)
 
-    def cmd_list(self, cmd):
+    def cmd_list(self, friendId):
         groups_info = [str(g) for (_, g) in self.groups.items()]
         text = '\n'.join(groups_info)
-        self.answer(cmd, text);
+        self.answer(friendId, text);
 
-    def cmd_autoinvite(self, cmd):
-        info = cmd.to_obj(GroupInfo)
-        group = self.groups[info.groupId]
-        if info.password != group.password:
-            self.answer(cmd, "Wrong password")
+    def cmd_autoinvite(self, friendId, groupId=0, password=''):
+        groupId = int(groupId)
+        group = self.groups[groupId]
+        if password != group.password:
+            self.answer(friendId, "Wrong password")
             return
             
-        groups = self.autoinvite.get(cmd.friendId, set())
-        groups.add(info.groupId)
-        self.autoinvite[cmd.friendId] = groups
-        self.conference_invite(cmd.friendId, info.groupId)
+        pk = self.friend_get_public_key(friendId)
+        self.autoinvite[pk].add(groupId)
+        self.conference_invite(friendId, groupId)
 
-    def cmd_deautoinvite(self, cmd):
-        info = cmd.to_obj(GroupInfo)
-        self.autoinvite.get(cmd.friendId, set()).remove(info.groupId)
+    def cmd_deautoinvite(self, friendId, groupId=0):
+        groupId = int(groupId)
+        pk = self.friend_get_public_key(friendId)
+        self.autoinvite[pk].remove(groupId)
 
     def on_friend_connection_status(self, friendId, status):
+        pk = self.friend_get_public_key(friendId)
+        if pk not in self.autoinvite:
+            self.autoinvite[pk] = set()
+
         if not status:
             return
 
-        groups = self.autoinvite.get(friendId, set())
+        groups = self.autoinvite[pk]
         for groupId in groups:
             try:
                 self.conference_invite(friendId, groupId)
@@ -228,19 +214,21 @@ class GroupBot(GenericBot):
 
     def on_friend_message(self, friendId, type, message):
         name = self.friend_get_name(friendId)
-        cmd = BotCommand(friendId, message)
+        temp = message.split(' ')
+        name = temp[0]
+        params = temp[1:]
 
         try:
-            method = getattr(self, 'cmd_' + cmd.name)
+            method = getattr(self, 'cmd_' + name)
         except AttributeError:
-            self.answer(cmd, '%s is unsupported command' % cmd.name)
-            self.cmd_help(cmd)
+            self.answer(friendId, '%s is unsupported command' % name)
+            self.cmd_help(friendId)
             return
 
         try:
-            method(cmd)
+            method(friendId, *params)
         except:
-            self.answer(cmd, 'Error while handle %s' % cmd.name)
+            self.answer(friendId, 'Error while handle %s' % name)
 
 opts = None
 opts = ToxOptions()
