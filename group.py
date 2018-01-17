@@ -153,25 +153,27 @@ class GroupBot(GenericBot):
         self.friend_send_message(friendId, Tox.MESSAGE_TYPE_NORMAL, text)
 
     def cmd_id(self, friendId):
+        ''' Print my Tox ID '''
         self.answer(friendId, self.self_get_address())
 
     def cmd_help(self, id):
-        self.answer(id, '''Usage:
-    id : Print my Tox ID
-    help : Print this text
-    list : Print list all avaliable chats
-    invite [<groupId> [<password>]] : Invite in chat with groupId. Default id is 0
-    group : Create new group
-    autoinvite [<groupId> [<password>]] : Autoinvite in group. Default id is 0
-    deautoinvite [<groupId>] : Disable autoinvite in group. Default id is 0
-''')
+        ''' Print this text '''
+        text = 'Usage:\n'
+        commands = filter(lambda s: s.startswith('cmd_'), dir(self))
+        for c in commands:
+            name = c[4:]
+            doc = getattr(self, c).__doc__
+            text += '%s : %s\n' % (name, doc)
+        self.answer(id, text)
 
     def cmd_group(self, friendId, password=''):
+        ''' Create new group '''
         groupId = self.conference_new()
         self.groups[groupId] = ToxGroup(self, groupId, password)
         self.conference_invite(friendId, groupId)
 
     def cmd_invite(self, friendId, groupId=0, password=''):
+        ''' [<groupId> [<password>]] Invite in chat with groupId. Default id is 0 '''
         groupId = int(groupId)
         group = self.groups[groupId]
         if password != group.password:
@@ -181,11 +183,13 @@ class GroupBot(GenericBot):
         self.conference_invite(friendId, groupId)
 
     def cmd_list(self, friendId):
+        ''' Print list all avaliable chats '''
         groups_info = [str(g) for (_, g) in self.groups.items()]
         text = '\n'.join(groups_info)
         self.answer(friendId, text);
 
     def cmd_autoinvite(self, friendId, groupId=0, password=''):
+        ''' [<groupId> [<password>]] Autoinvite in group. Default id is 0 '''
         groupId = int(groupId)
         group = self.groups[groupId]
         if password != group.password:
@@ -197,6 +201,7 @@ class GroupBot(GenericBot):
         self.conference_invite(friendId, groupId)
 
     def cmd_deautoinvite(self, friendId, groupId=0):
+        ''' [<groupId>] : Disable autoinvite in group. Default id is 0 '''
         groupId = int(groupId)
         pk = self.friend_get_public_key(friendId)
         self.autoinvite[pk].remove(groupId)
