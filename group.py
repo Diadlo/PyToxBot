@@ -1,5 +1,5 @@
 #
-# @file   echo.py
+# @file   group.py
 # @author Polshakov Dmitry (Diadlo) <polsha3@gmail.com>
 #
 # Copyright (C) 2017 Polshakov Dmitry (Diadlo) <polsha3@gmail.com>
@@ -35,13 +35,6 @@ SERVER = [
 ]
 
 DATA = 'groupbot.tox'
-
-# echo.py features
-# - accept friend request
-# - echo back friend message
-# - accept and answer friend call request
-# - send back friend audio/video data
-# - send back files friend sent
 
 class ToxOptions():
     def __init__(self):
