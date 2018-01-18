@@ -161,10 +161,10 @@ class CommandInfo():
 
     def __str__(self):
         vars = ''
-        for v in vars:
+        for v in self.vars:
             vars += '<%s> ' % v
 
-        return '%s%s : %s' % (self.name, vars, self.doc)
+        return '%s %s: %s' % (self.name, vars, self.doc)
 
 
 class GroupBot(GenericBot):
