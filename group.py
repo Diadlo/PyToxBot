@@ -20,7 +20,6 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
-import inspect
 import sys
 
 from generic_bot import GenericBot, ToxOptions, ToxServer
@@ -58,38 +57,6 @@ class ToxGroup():
         return template % (id, type, peers, title)
 
 
-class CommandInfo():
-    def __init__(self, object, func):
-        # Remove 'cmd_'
-        self.name = func[4:]
-
-        cmd = getattr(object, func)
-        doc = cmd.__doc__
-        if doc is None:
-            doc = ''
-
-        temp = doc.split(' ', 1)
-        try:
-            self._order = int(temp[0])
-            self.doc = temp[1].strip()
-        except:
-            self._order = 0
-            self.doc = doc.strip()
-
-        # Skip 'self' and 'friendId'
-        self.vars = inspect.getargspec(cmd)[0][2:]
-
-    def order(self):
-        return self._order
-
-    def __str__(self):
-        vars = ''
-        for v in self.vars:
-            vars += '<%s> ' % v
-
-        return '%s %s: %s' % (self.name, vars, self.doc)
-
-
 class GroupBot(GenericBot):
     def __init__(self, profile, servers, opts=None):
         super(GroupBot, self).__init__('PyGroupBot', profile, servers, 'autoinvite.conf', opts)
@@ -114,26 +81,12 @@ class GroupBot(GenericBot):
         self.answer(friendId, text)
 
     def cmd_info(self, friendId):
-        '''25 Print my current status '''
+        '''30 Print my current status '''
         uptime = get_uptime()
         friend_count = self.self_get_friend_list_size()
         text = ('Uptime: %s\n'
                 'Friends: %d (%d online)\n'
                 % (uptime, friend_count, self.online_count))
-        self.answer(friendId, text)
-
-    def cmd_help(self, friendId):
-        '''30 Print this text '''
-        functions = filter(lambda s: s.startswith('cmd_'), dir(self))
-        commands = []
-        for f in functions:
-            commands.append(CommandInfo(self, f))
-
-        commands.sort(key=CommandInfo.order)
-        text = 'Usage:\n'
-        for cmd in commands:
-            text += '   %s\n' % str(cmd)
-
         self.answer(friendId, text)
 
     def cmd_invite(self, friendId, groupId=0, password=''):

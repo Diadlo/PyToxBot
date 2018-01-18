@@ -17,6 +17,7 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
+import inspect
 import pickle
 import random
 import sys
@@ -51,6 +52,38 @@ class ToxOptions():
         self.savedata_length = len(self.savedata_data)
         self.savedata_type = Tox.SAVEDATA_TYPE_TOX_SAVE
 
+class CommandInfo():
+    def __init__(self, object, func):
+        # Remove 'cmd_'
+        self.name = func[4:]
+
+        cmd = getattr(object, func)
+        doc = cmd.__doc__
+        if doc is None:
+            doc = ''
+
+        temp = doc.split(' ', 1)
+        try:
+            self._order = int(temp[0])
+            self.doc = temp[1].strip()
+        except:
+            self._order = 0
+            self.doc = doc.strip()
+
+        # Skip 'self' and 'friendId'
+        self.vars = inspect.getargspec(cmd)[0][2:]
+
+    def order(self):
+        return self._order
+
+    def __str__(self):
+        vars = ''
+        for v in self.vars:
+            vars += '<%s> ' % v
+
+        return '%s %s: %s' % (self.name, vars, self.doc)
+
+
 class GenericBot(Tox):
     def __init__(self, name, profile, servers, config_name, opts=None):
         if opts is not None:
@@ -61,6 +94,8 @@ class GenericBot(Tox):
         self.to_save = []
         self.config_name = config_name
         self.self_set_name(name)
+        self.self_set_status_message("Send me the message 'help' for full"
+                " list of commands")
         self.connect()
 
     def __enter__(self):
@@ -119,3 +154,18 @@ class GenericBot(Tox):
 
     def answer(self, friendId, text):
         self.friend_send_message(friendId, Tox.MESSAGE_TYPE_NORMAL, text)
+
+    def cmd_help(self, friendId):
+        '''00 Print this text '''
+        functions = filter(lambda s: s.startswith('cmd_'), dir(self))
+        commands = []
+        for f in functions:
+            commands.append(CommandInfo(self, f))
+
+        commands.sort(key=CommandInfo.order)
+        text = 'Usage:\n'
+        for cmd in commands:
+            text += '   %s\n' % str(cmd)
+
+        self.answer(friendId, text)
+
