@@ -25,6 +25,23 @@ import sys
 
 from generic_bot import GenericBot, ToxOptions, ToxServer
 from os.path import exists
+from time import time
+
+
+BOT_START = time()
+
+
+def get_uptime():
+    current = time() - BOT_START
+    secunds = current % 60
+    current /= 60
+    minutes = current % 60
+    current /= 60
+    hours = current % 60
+    current /= 60
+    days = current % 24
+    return "%dd %dh %dm" % (days, hours, minutes)
+
 
 class ToxGroup():
     def __init__(self, tox, groupId, password=''):
@@ -77,6 +94,7 @@ class GroupBot(GenericBot):
     def __init__(self, profile, servers, opts=None):
         super(GroupBot, self).__init__('PyGroupBot', profile, servers, 'autoinvite.conf', opts)
 
+        self.online_count = 0
         groupId = self.conference_new()
         self.groups = {groupId: ToxGroup(self, groupId)}
         # PK -> set(groupId)
@@ -86,17 +104,26 @@ class GroupBot(GenericBot):
         print('ID: %s' % self.self_get_address())
 
     def cmd_id(self, friendId):
-        '''1 Print my Tox ID '''
+        '''10 Print my Tox ID '''
         self.answer(friendId, self.self_get_address())
 
     def cmd_list(self, friendId):
-        '''2 Print list all avaliable chats '''
+        '''20 Print list all avaliable chats '''
         groups_info = [str(g) for (_, g) in self.groups.items()]
         text = '\n'.join(groups_info)
         self.answer(friendId, text)
 
+    def cmd_info(self, friendId):
+        '''25 Print my current status '''
+        uptime = get_uptime()
+        friend_count = self.self_get_friend_list_size()
+        text = ('Uptime: %s\n'
+                'Friends: %d (%d online)\n'
+                % (uptime, friend_count, self.online_count))
+        self.answer(friendId, text)
+
     def cmd_help(self, friendId):
-        '''3 Print this text '''
+        '''30 Print this text '''
         functions = filter(lambda s: s.startswith('cmd_'), dir(self))
         commands = []
         for f in functions:
@@ -110,7 +137,7 @@ class GroupBot(GenericBot):
         self.answer(friendId, text)
 
     def cmd_invite(self, friendId, groupId=0, password=''):
-        '''4 Invite in chat with groupId. Default id is 0 '''
+        '''40 Invite in chat with groupId. Default id is 0 '''
         groupId = int(groupId)
         group = self.groups[groupId]
         if password != group.password:
@@ -120,13 +147,13 @@ class GroupBot(GenericBot):
         self.conference_invite(friendId, groupId)
 
     def cmd_group(self, friendId, password=''):
-        '''5 Create new group '''
+        '''50 Create new group '''
         groupId = self.conference_new()
         self.groups[groupId] = ToxGroup(self, groupId, password)
         self.conference_invite(friendId, groupId)
 
     def cmd_autoinvite(self, friendId, groupId=0, password=''):
-        '''6 Autoinvite in group. Default id is 0, try without password '''
+        '''60 Autoinvite in group. Default id is 0, try without password '''
         groupId = int(groupId)
         group = self.groups[groupId]
         if password != group.password:
@@ -138,7 +165,7 @@ class GroupBot(GenericBot):
         self.conference_invite(friendId, groupId)
 
     def cmd_deautoinvite(self, friendId, groupId=0):
-        '''7 Disable autoinvite in group. Default id is 0 '''
+        '''70 Disable autoinvite in group. Default id is 0 '''
         groupId = int(groupId)
         pk = self.friend_get_public_key(friendId)
         self.autoinvite[pk].remove(groupId)
@@ -148,6 +175,7 @@ class GroupBot(GenericBot):
         if pk not in self.autoinvite:
             self.autoinvite[pk] = set()
 
+        self.online_count += 1 if status else -1
         if not status:
             return
 
