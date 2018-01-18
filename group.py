@@ -22,6 +22,7 @@
 
 import inspect
 import pickle
+import random
 import sys
 from pytox import Tox
 
@@ -29,20 +30,11 @@ from time import sleep
 from os.path import exists
 
 
-DATA = 'groupbot.tox'
-
-
 class ToxServer():
     def __init__(self, ip, port, pk):
         self.ip = ip
         self.port = port
         self.pk = pk
-
-
-SERVERS = [
-    ToxServer("192.210.149.121", 33445, "F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67")
-]
-
 
 class ToxOptions():
     def __init__(self):
@@ -58,22 +50,13 @@ class ToxOptions():
         self.savedata_data = b''
         self.savedata_length = 0
 
-
-def save_to_file(tox, fname):
-    data = tox.get_savedata()
-    with open(fname, 'wb') as f:
-        f.write(data)
-
-
-def load_from_file(fname):
-    return open(fname, 'rb').read()
-
-
 class GenericBot(Tox):
-    def __init__(self, name, config_name, opts=None):
+    def __init__(self, name, profile, servers, config_name, opts=None):
         if opts is not None:
             super(GenericBot, self).__init__(opts)
 
+        self.profile = profile
+        self.servers = servers
         self.to_save = []
         self.config_name = config_name
         self.self_set_name(name)
@@ -92,20 +75,24 @@ class GenericBot(Tox):
                 pickle.dump(getattr(self, save), f)
 
     def load_settings(self, conf):
-        try:
-            with open(conf, 'rb') as f:
-                for save in self.to_save:
-                    setattr(self, save, pickle.load(f))
-        except:
-            pass
+        if not exists(conf):
+            return
+
+        with open(conf, 'rb') as f:
+            for save in self.to_save:
+                setattr(self, save, pickle.load(f))
+
+    def save_profile(self):
+        with open(self.profile, 'wb') as f:
+            f.write(self.get_savedata())
 
     def connect(self):
-        server = SERVERS[0]
+        server = random.choice(self.servers)
         self.bootstrap(server.ip, server.port, server.pk)
 
     def start(self):
         checked = False
-        save_to_file(self, DATA)
+        self.save_profile()
 
         try:
             while True:
@@ -123,11 +110,11 @@ class GenericBot(Tox):
                 self.iterate()
                 sleep(0.01)
         except KeyboardInterrupt:
-            save_to_file(self, DATA)
+            self.save_profile()
 
     def on_friend_request(self, pk, message):
         self.friend_add_norequest(pk)
-        save_to_file(self, DATA)
+        self.save_profile()
 
     def answer(self, friendId, text):
         self.friend_send_message(friendId, Tox.MESSAGE_TYPE_NORMAL, text)
@@ -154,13 +141,17 @@ class CommandInfo():
         self.name = func[4:]
 
         cmd = getattr(object, func)
-        temp = cmd.__doc__.split(' ', 1)
+        doc = cmd.__doc__
+        if doc is None:
+            doc = ''
+
+        temp = doc.split(' ', 1)
         try:
             self._order = int(temp[0])
             self.doc = temp[1].strip()
         except:
             self._order = 0
-            self.doc = cmd.__doc__.strip()
+            self.doc = doc.strip()
 
         # Skip 'self' and 'friendId'
         self.vars = inspect.getargspec(cmd)[0][2:]
@@ -177,8 +168,8 @@ class CommandInfo():
 
 
 class GroupBot(GenericBot):
-    def __init__(self, opts=None):
-        super(GroupBot, self).__init__('PyGroupBot', 'autoinvite.conf', opts)
+    def __init__(self, profile, servers, opts=None):
+        super(GroupBot, self).__init__('PyGroupBot', profile, servers, 'autoinvite.conf', opts)
 
         groupId = self.conference_new()
         self.groups = {groupId: ToxGroup(self, groupId)}
@@ -288,13 +279,18 @@ opts = None
 opts = ToxOptions()
 opts.udp_enabled = True
 
+profile = 'groupbot.tox'
 if len(sys.argv) == 2:
-    DATA = sys.argv[1]
+    profile = sys.argv[1]
 
-if exists(DATA):
-    opts.savedata_data = load_from_file(DATA)
+if exists(profile):
+    opts.savedata_data = open(profile, 'rb').read()
     opts.savedata_length = len(opts.savedata_data)
     opts.savedata_type = Tox.SAVEDATA_TYPE_TOX_SAVE
 
-with GroupBot(opts) as t:
+servers = [
+    ToxServer("192.210.149.121", 33445, "F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67")
+]
+
+with GroupBot(profile, servers, opts) as t:
     t.start()
