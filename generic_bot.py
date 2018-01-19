@@ -169,3 +169,25 @@ class GenericBot(Tox):
 
         self.answer(friendId, text)
 
+    def handle_command(self, friendId, type, message):
+        ''' Handle command in privat chat '''
+        temp = message.split(' ')
+        name = temp[0]
+        params = temp[1:]
+
+        try:
+            method = getattr(self, 'cmd_' + name)
+        except AttributeError:
+            try:
+                self.answer(friendId, '%s is unsupported command' % name)
+                self.cmd_help(friendId)
+            except Exception as e:
+                print(str(e))
+            finally:
+                return
+
+        try:
+            method(friendId, *params)
+        except Exception as e:
+            error = 'Error while handle %s (%s)' % (name, str(e))
+            self.answer(friendId, error)
