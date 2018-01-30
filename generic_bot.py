@@ -172,7 +172,26 @@ class GenericBot(Tox):
 
         self.answer(friendId, text)
 
-    def handle_command(self, friendId, type, message):
+    def handle_gcommand(self, groupId, message):
+        ''' Handle command in group chat '''
+        temp = message.split(' ')
+        name = temp[0]
+        params = temp[1:]
+        if name[0] != '!':
+            return
+
+        name = name[1:]
+        try:
+            method = getattr(self, 'gcmd_' + name)
+        except AttributeError as e:
+            return
+
+        try:
+            method(groupId, *params)
+        except Exception as e:
+            print(str(e))
+
+    def handle_command(self, friendId, message):
         ''' Handle command in privat chat '''
         temp = message.split(' ')
         name = temp[0]
