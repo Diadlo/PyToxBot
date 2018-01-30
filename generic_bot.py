@@ -155,6 +155,9 @@ class GenericBot(Tox):
     def answer(self, friendId, text):
         self.friend_send_message(friendId, Tox.MESSAGE_TYPE_NORMAL, text)
 
+    def ganswer(self, groupId, text):
+        self.conference_send_message(groupId, Tox.MESSAGE_TYPE_NORMAL, text)
+
     def cmd_help(self, friendId):
         '''00 Print this text '''
         functions = filter(lambda s: s.startswith('cmd_'), dir(self))

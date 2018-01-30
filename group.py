@@ -24,6 +24,7 @@ import sys
 
 from datetime import datetime
 from generic_bot import GenericBot, ToxOptions, ToxServer
+from pytox import Tox
 from os.path import exists
 from time import time
 
@@ -192,10 +193,14 @@ class GroupBot(GenericBot):
     def on_friend_message(self, friendId, type, message):
         self.handle_command(friendId, type, message)
 
-    def on_conference_message(self, groupId, peerId, type, message):
+    def on_conference_message(self, groupId, peerId, type, msg_text):
         name = self.conference_peer_get_name(groupId, peerId)
-        msg = Message(name, message)
+        msg = Message(name, msg_text)
         self.messages[groupId].append(msg)
+
+        if msg_text == '!id':
+            id_text = self.self_get_address()
+            self.ganswer(groupId, id_text)
 
 opts = ToxOptions()
 opts.udp_enabled = True
