@@ -107,8 +107,8 @@ class GroupBot(GenericBot):
                 % (uptime, friend_count, self.online_count))
         self.answer(friendId, text)
 
-    def cmd_invite(self, friendId, groupId=0, password=''):
-        '''40 Invite in chat with groupId. Default id is 0 '''
+    def cmd_invite(self, friendId, groupId, password=''):
+        '''40 Invite in chat with groupId '''
         groupId = int(groupId)
         group = self.groups[groupId]
         if password != group.password:
@@ -124,8 +124,8 @@ class GroupBot(GenericBot):
         self.messages[groupId] = []
         self.conference_invite(friendId, groupId)
 
-    def cmd_autoinvite(self, friendId, groupId=0, password=''):
-        '''60 Autoinvite in group. Default id is 0, try without password '''
+    def cmd_autoinvite(self, friendId, groupId, password=''):
+        '''60 Autoinvite in group. Default try without password '''
         groupId = int(groupId)
         group = self.groups[groupId]
         if password != group.password:
@@ -136,14 +136,14 @@ class GroupBot(GenericBot):
         self.autoinvite[pk].add(groupId)
         self.conference_invite(friendId, groupId)
 
-    def cmd_deautoinvite(self, friendId, groupId=0):
-        '''70 Disable autoinvite in group. Default id is 0 '''
+    def cmd_deautoinvite(self, friendId, groupId):
+        '''70 Disable autoinvite in group '''
         groupId = int(groupId)
         pk = self.friend_get_public_key(friendId)
         self.autoinvite[pk].remove(groupId)
 
-    def cmd_log(self, friendId, groupId=0, count=100):
-        '''80 Show *count* messages from chat. Default id is 0, count is 100 '''
+    def cmd_log(self, friendId, groupId, count=100):
+        '''80 Show *count* messages from chat. Default count is 100 '''
         groupId = int(groupId)
         # Last count messages
         start = -1 * int(count)
