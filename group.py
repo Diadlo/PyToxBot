@@ -154,7 +154,9 @@ if exists(profile):
     opts.load_profile(profile)
 
 servers = [
-    ToxServer("192.210.149.121", 33445, "F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67")
+    ToxServer("biribiri.org",
+    33445,
+    "F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67"),
 ]
 
 with GroupBot(profile, servers, opts) as t:
