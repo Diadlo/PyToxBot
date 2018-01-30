@@ -86,6 +86,8 @@ class GroupBot(GenericBot):
         self.last_online = {}
         # PK -> groupname
         self.autohistory = {}
+        # PK -> ToxGroup
+        self.reserve = {}
         self.to_save = ['autoinvite']
 
         print('ID: %s' % self.self_get_address())
@@ -120,12 +122,15 @@ class GroupBot(GenericBot):
 
         self.conference_invite(friendId, groupId)
 
-    def cmd_group(self, friendId, name, password=''):
-        '''50 Create new group with name '''
-        groupId = self.conference_new()
+    def add_group(self, friendId, groupId, name, password):
         self.groups[name] = ToxGroup(name, self, groupId, password)
         self.messages[groupId] = []
         self.conference_invite(friendId, groupId)
+
+    def cmd_group(self, friendId, name, password=''):
+        '''50 Create new group with name '''
+        groupId = self.conference_new()
+        self.add_group(friendId, groupId, name, password)
         self.conference_set_title(groupId, name)
 
     def cmd_autoinvite(self, friendId, groupId, password=''):
@@ -164,6 +169,12 @@ class GroupBot(GenericBot):
         '''100 Disable autohistory '''
         pk = self.friend_get_public_key(friendId)
         del self.autohistory[pk]
+
+    def cmd_reserve(self, friendId, name, password=''):
+        '''110 Same as 'group' but instead of creation wait invite from you'''
+        pk = self.friend_get_public_key(friendId)
+        self.reserve[pk] = ToxGroup(name, self, -1, password)
+        self.answer(friendId, "Reserved");
 
     def offline_messages(self, groupId, friendId, last_online):
         messages = self.messages[groupId]
@@ -215,6 +226,16 @@ class GroupBot(GenericBot):
         self.messages[groupId].append(msg)
 
         self.handle_gcommand(groupId, msg_text)
+
+    def on_conference_invite(self, friendId, type, cookie):
+        groupId = self.conference_join(friendId, cookie)
+        pk = self.friend_get_public_key(friendId)
+        g = self.reserve.get(pk)
+        self.reserve[pk] = None
+        if g is None:
+            return
+
+        self.add_group(friendId, groupId, g.name, g.password)
 
     def gcmd_id(self, groupId):
         id_text = self.self_get_address()
