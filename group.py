@@ -84,6 +84,8 @@ class GroupBot(GenericBot):
         self.messages = {0: []}
         # PK -> time
         self.last_online = {}
+        # PK -> groupname
+        self.autohistory = {}
         self.to_save = ['autoinvite']
 
         print('ID: %s' % self.self_get_address())
@@ -153,6 +155,16 @@ class GroupBot(GenericBot):
         for msg in messages:
             self.answer(friendId, str(msg))
 
+    def cmd_autohistory(self, friendId, name):
+        '''90 Set group to automatically receive offline history '''
+        pk = self.friend_get_public_key(friendId)
+        self.autohistory[pk] = name
+
+    def cmd_deautohistory(self, friendId):
+        '''100 Disable autohistory '''
+        pk = self.friend_get_public_key(friendId)
+        del self.autohistory[pk]
+
     def offline_messages(self, groupId, friendId, last_online):
         messages = self.messages[groupId]
         to_send = filter(lambda msg: msg.date > last_online, messages)
@@ -169,10 +181,12 @@ class GroupBot(GenericBot):
         autoinvite_groups = self.autoinvite[pk]
 
         # Autohistory only for first group
-        if 0 in autoinvite_groups:
+        if pk in self.autohistory:
+            groupname = self.autohistory[pk]
+            groupId = self.groups[groupname].groupId
             last_online = self.last_online.get(pk, -1)
             if last_online != -1:
-                self.offline_messages(0, friendId, last_online)
+                self.offline_messages(groupId, friendId, last_online)
 
         for groupId in autoinvite_groups:
             try:
