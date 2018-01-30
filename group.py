@@ -22,6 +22,7 @@
 
 import sys
 
+from datetime import datetime
 from generic_bot import GenericBot, ToxOptions, ToxServer
 from os.path import exists
 from time import time
@@ -57,6 +58,17 @@ class ToxGroup():
         return template % (id, type, peers, title)
 
 
+class Message:
+    def __init__(self, name, text):
+        self.name = name
+        self.date = time()
+        self.text = text
+
+    def __str__(self):
+        date = datetime.fromtimestamp(self.date).strftime('%H:%M:%S')
+        return "[%s] %s: %s" % (date, self.name, self.text)
+
+
 class GroupBot(GenericBot):
     def __init__(self, profile, servers, opts=None):
         super(GroupBot, self).__init__('PyGroupBot', profile, servers, 'autoinvite.conf', opts)
@@ -66,6 +78,10 @@ class GroupBot(GenericBot):
         self.groups = {groupId: ToxGroup(self, groupId)}
         # PK -> set(groupId)
         self.autoinvite = {}
+        # groupId -> [messages]
+        self.messages = {0: []}
+        # PK -> time
+        self.last_online = {}
         self.to_save = ['autoinvite']
 
         print('ID: %s' % self.self_get_address())
@@ -123,25 +139,52 @@ class GroupBot(GenericBot):
         pk = self.friend_get_public_key(friendId)
         self.autoinvite[pk].remove(groupId)
 
-    def on_friend_connection_status(self, friendId, status):
+    def offline_messages(self, groupId, friendId, last_online):
+        messages = self.messages[groupId]
+        to_send = filter(lambda msg: msg.date > last_online, messages)
+        self.answer(friendId, "Messages from your last visit:")
+        for msg in to_send:
+            self.answer(friendId, str(msg))
+
+    def on_friend_quit(self, friendId):
         pk = self.friend_get_public_key(friendId)
-        if pk not in self.autoinvite:
-            self.autoinvite[pk] = set()
+        self.last_online[pk] = time()
 
-        self.online_count += 1 if status else -1
-        if not status:
-            return
+    def on_friend_come(self, friendId):
+        pk = self.friend_get_public_key(friendId)
+        autoinvite_groups = self.autoinvite[pk]
 
-        groups = self.autoinvite[pk]
-        for groupId in groups:
+        # Autohistory only for first group
+        if 0 in autoinvite_groups:
+            last_online = self.last_online.get(pk, -1)
+            if last_online != -1:
+                self.offline_messages(0, friendId, last_online)
+
+        for groupId in autoinvite_groups:
             try:
                 self.conference_invite(friendId, groupId)
             except:
                 error = "Can't invite %d in group with id %d"
                 print(error % (friendId, groupId))
 
+    def on_friend_connection_status(self, friendId, online):
+        pk = self.friend_get_public_key(friendId)
+        if pk not in self.autoinvite:
+            self.autoinvite[pk] = set()
+
+        self.online_count += 1 if online else -1
+        if online:
+            self.on_friend_come(friendId)
+        else:
+            self.on_friend_quit(friendId)
+
     def on_friend_message(self, friendId, type, message):
         self.handle_command(friendId, type, message)
+
+    def on_conference_message(self, groupId, peerId, type, message):
+        name = self.conference_peer_get_name(groupId, peerId)
+        msg = Message(name, message)
+        self.messages[groupId].append(msg)
 
 opts = ToxOptions()
 opts.udp_enabled = True
