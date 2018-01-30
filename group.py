@@ -139,6 +139,15 @@ class GroupBot(GenericBot):
         pk = self.friend_get_public_key(friendId)
         self.autoinvite[pk].remove(groupId)
 
+    def cmd_log(self, friendId, groupId=0, count=100):
+        '''80 Show *count* messages from chat. Default id is 0, count is 100 '''
+        groupId = int(groupId)
+        # Last count messages
+        start = -1 * int(count)
+        messages = self.messages[groupId][start:]
+        for msg in messages:
+            self.answer(friendId, str(msg))
+
     def offline_messages(self, groupId, friendId, last_online):
         messages = self.messages[groupId]
         to_send = filter(lambda msg: msg.date > last_online, messages)
