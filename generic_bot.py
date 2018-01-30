@@ -152,6 +152,9 @@ class GenericBot(Tox):
         self.friend_add_norequest(pk)
         self.save_profile()
 
+    def on_conference_invite(self, friendId, type, cookie):
+        self.conference_join(friendId, cookie)
+
     def answer(self, friendId, text):
         self.friend_send_message(friendId, Tox.MESSAGE_TYPE_NORMAL, text)
 
