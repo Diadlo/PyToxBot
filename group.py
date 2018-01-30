@@ -129,6 +129,10 @@ class GroupBot(GenericBot):
 
     def cmd_group(self, friendId, name, password=''):
         '''50 Create new group with name '''
+        if name in self.groups:
+            self.answer(friendId, "Group with this name already exists")
+            return
+
         groupId = self.conference_new()
         self.add_group(friendId, groupId, name, password)
         self.conference_set_title(groupId, name)
@@ -171,6 +175,10 @@ class GroupBot(GenericBot):
 
     def cmd_reserve(self, friendId, name, password=''):
         '''110 Same as 'group' but instead of creation wait invite from you'''
+        if name in self.groups:
+            self.answer(friendId, "Group with this name already exists")
+            return
+
         pk = self.friend_get_public_key(friendId)
         self.reserve[pk] = ToxGroup(name, self, -1, password)
         self.answer(friendId, "Reserved");
