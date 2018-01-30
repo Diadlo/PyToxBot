@@ -78,7 +78,7 @@ class GroupBot(GenericBot):
         self.online_count = 0
         groupId = self.conference_new()
         self.groups = {'default': ToxGroup('default', self, groupId)}
-        # PK -> set(groupId)
+        # PK -> set(groupname)
         self.autoinvite = {}
         # groupId -> [messages]
         self.messages = {0: []}
@@ -133,7 +133,7 @@ class GroupBot(GenericBot):
         self.add_group(friendId, groupId, name, password)
         self.conference_set_title(groupId, name)
 
-    def cmd_autoinvite(self, friendId, groupId, password=''):
+    def cmd_autoinvite(self, friendId, name, password=''):
         '''60 Autoinvite in group. Default try without password '''
         group = self.groups[name]
         groupId = group.groupId
@@ -142,14 +142,13 @@ class GroupBot(GenericBot):
             return
 
         pk = self.friend_get_public_key(friendId)
-        self.autoinvite[pk].add(groupId)
+        self.autoinvite[pk].add(name)
         self.conference_invite(friendId, groupId)
 
-    def cmd_deautoinvite(self, friendId, groupId):
+    def cmd_deautoinvite(self, friendId, name):
         '''70 Disable autoinvite in group '''
-        groupId = int(groupId)
         pk = self.friend_get_public_key(friendId)
-        self.autoinvite[pk].remove(groupId)
+        self.autoinvite[pk].remove(name)
 
     def cmd_log(self, friendId, groupId, count=100):
         '''80 Show *count* messages from chat. Default count is 100 '''
@@ -189,7 +188,6 @@ class GroupBot(GenericBot):
 
     def on_friend_come(self, friendId):
         pk = self.friend_get_public_key(friendId)
-        autoinvite_groups = self.autoinvite[pk]
 
         # Autohistory only for first group
         if pk in self.autohistory:
@@ -199,12 +197,14 @@ class GroupBot(GenericBot):
             if last_online != -1:
                 self.offline_messages(groupId, friendId, last_online)
 
-        for groupId in autoinvite_groups:
+        autoinvite_groups = self.autoinvite[pk]
+        for groupname in autoinvite_groups:
             try:
+                groupId = self.groups[groupname].groupId
                 self.conference_invite(friendId, groupId)
             except:
-                error = "Can't invite %d in group with id %d"
-                print(error % (friendId, groupId))
+                error = "Can't invite %d in group %s"
+                print(error % (friendId, groupname))
 
     def on_friend_connection_status(self, friendId, online):
         pk = self.friend_get_public_key(friendId)
