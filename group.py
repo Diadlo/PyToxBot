@@ -45,7 +45,8 @@ def get_uptime():
 
 
 class ToxGroup():
-    def __init__(self, tox, groupId, password=''):
+    def __init__(self, name, tox, groupId, password=''):
+        self.name = name
         self.tox = tox
         self.groupId = groupId
         self.password = password
@@ -55,8 +56,8 @@ class ToxGroup():
         type = 'Text'
         peers = self.tox.conference_peer_count(id)
         title = self.tox.conference_get_title(id)
-        template = 'Group %d | %s | Peers: %d | Title: %s'
-        return template % (id, type, peers, title)
+        template = '%s | %s | Peers: %d | Title: %s'
+        return template % (self.name, type, peers, title)
 
 
 class Message:
@@ -76,7 +77,7 @@ class GroupBot(GenericBot):
 
         self.online_count = 0
         groupId = self.conference_new()
-        self.groups = {groupId: ToxGroup(self, groupId)}
+        self.groups = {'default': ToxGroup('default', self, groupId)}
         # PK -> set(groupId)
         self.autoinvite = {}
         # groupId -> [messages]
@@ -107,27 +108,28 @@ class GroupBot(GenericBot):
                 % (uptime, friend_count, self.online_count))
         self.answer(friendId, text)
 
-    def cmd_invite(self, friendId, groupId, password=''):
+    def cmd_invite(self, friendId, name, password=''):
         '''40 Invite in chat with groupId '''
-        groupId = int(groupId)
-        group = self.groups[groupId]
+        group = self.groups[name]
+        groupId = group.groupId
         if password != group.password:
             self.answer(friendId, "Wrong password")
             return
 
         self.conference_invite(friendId, groupId)
 
-    def cmd_group(self, friendId, password=''):
-        '''50 Create new group '''
+    def cmd_group(self, friendId, name, password=''):
+        '''50 Create new group with name '''
         groupId = self.conference_new()
-        self.groups[groupId] = ToxGroup(self, groupId, password)
+        self.groups[name] = ToxGroup(name, self, groupId, password)
         self.messages[groupId] = []
         self.conference_invite(friendId, groupId)
+        self.conference_set_title(groupId, name)
 
     def cmd_autoinvite(self, friendId, groupId, password=''):
         '''60 Autoinvite in group. Default try without password '''
-        groupId = int(groupId)
-        group = self.groups[groupId]
+        group = self.groups[name]
+        groupId = group.groupId
         if password != group.password:
             self.answer(friendId, "Wrong password")
             return
