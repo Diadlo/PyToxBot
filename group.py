@@ -97,11 +97,12 @@ class GroupBot(GenericBot):
         self.answer(friendId, text)
 
     def cmd_info(self, friendId):
-        '''30 Print my current status '''
+        '''30 Print my current status and info '''
         uptime = get_uptime()
         friend_count = self.self_get_friend_list_size()
         text = ('Uptime: %s\n'
                 'Friends: %d (%d online)\n'
+                'Sources on GitHub: https://github.com/Diadlo/PyGroupBot\n'
                 % (uptime, friend_count, self.online_count))
         self.answer(friendId, text)
 
