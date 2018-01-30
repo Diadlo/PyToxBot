@@ -119,6 +119,7 @@ class GroupBot(GenericBot):
         '''50 Create new group '''
         groupId = self.conference_new()
         self.groups[groupId] = ToxGroup(self, groupId, password)
+        self.messages[groupId] = []
         self.conference_invite(friendId, groupId)
 
     def cmd_autoinvite(self, friendId, groupId=0, password=''):
