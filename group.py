@@ -122,6 +122,7 @@ class GroupBot(GenericBot):
             return
 
         self.conference_invite(friendId, groupId)
+        self.answer(friendId, 'You was invited to group "%s"' % name)
 
     def cmd_join(self, friendId, name, password=''):
         '''41 Same as 'invite' '''
@@ -141,6 +142,7 @@ class GroupBot(GenericBot):
         groupId = self.conference_new()
         self.add_group(friendId, groupId, name, password)
         self.conference_set_title(groupId, name)
+        self.answer(friendId, 'Group "%s" created' % name)
 
     def cmd_autoinvite(self, friendId, name, password=''):
         '''60 Autoinvite in group. Default try without password '''
@@ -153,11 +155,14 @@ class GroupBot(GenericBot):
         pk = self.friend_get_public_key(friendId)
         self.autoinvite[pk].add(name)
         self.conference_invite(friendId, groupId)
+        self.answer(friendId, 'You will be autoinvited to group "%s" when you'
+                'connect' % name)
 
     def cmd_deautoinvite(self, friendId, name):
         '''70 Disable autoinvite in group '''
         pk = self.friend_get_public_key(friendId)
         self.autoinvite[pk].remove(name)
+        self.answer(friendId, 'Autoinvite for "%s" was disabled' % name)
 
     def cmd_log(self, friendId, name, count=100):
         '''80 Show *count* messages from chat. Default count is 100 '''
@@ -171,11 +176,14 @@ class GroupBot(GenericBot):
         '''90 Set group to automatically receive offline history '''
         pk = self.friend_get_public_key(friendId)
         self.autohistory[pk] = name
+        self.answer(friendId, 'You will receive messages which was in "%s"'
+                'chat since your last visit' % name)
 
     def cmd_deautohistory(self, friendId):
         '''100 Disable autohistory '''
         pk = self.friend_get_public_key(friendId)
         del self.autohistory[pk]
+        self.answer(friendId, 'Autohistory for "%s" was disabled' % name)
 
     def cmd_reserve(self, friendId, name, password=''):
         '''110 Same as 'group' but instead of creation wait invite from you'''
@@ -185,7 +193,7 @@ class GroupBot(GenericBot):
 
         pk = self.friend_get_public_key(friendId)
         self.reserve[pk] = ToxGroup(name, self, -1, password)
-        self.answer(friendId, "Reserved");
+        self.answer(friendId, 'Group "%s" reserved' % name)
 
     def offline_messages(self, groupname, friendId, last_online):
         messages = self.messages[groupname]
