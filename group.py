@@ -81,8 +81,8 @@ class GroupBot(GenericBot):
         self.groups = {'default': ToxGroup('default', self, groupId)}
         # PK -> set(groupname)
         self.autoinvite = {}
-        # groupId -> [messages]
-        self.messages = {0: []}
+        # groupname -> [messages]
+        self.messages = {'default': []}
         # PK -> time
         self.last_online = {}
         # PK -> groupname
@@ -125,7 +125,7 @@ class GroupBot(GenericBot):
 
     def add_group(self, friendId, groupId, name, password):
         self.groups[name] = ToxGroup(name, self, groupId, password)
-        self.messages[groupId] = []
+        self.messages[name] = []
         self.conference_invite(friendId, groupId)
 
     def cmd_group(self, friendId, name, password=''):
@@ -155,12 +155,11 @@ class GroupBot(GenericBot):
         pk = self.friend_get_public_key(friendId)
         self.autoinvite[pk].remove(name)
 
-    def cmd_log(self, friendId, groupId, count=100):
+    def cmd_log(self, friendId, name, count=100):
         '''80 Show *count* messages from chat. Default count is 100 '''
-        groupId = int(groupId)
         # Last count messages
         start = -1 * int(count)
-        messages = self.messages[groupId][start:]
+        messages = self.messages[name][start:]
         for msg in messages:
             self.answer(friendId, str(msg))
 
@@ -184,8 +183,8 @@ class GroupBot(GenericBot):
         self.reserve[pk] = ToxGroup(name, self, -1, password)
         self.answer(friendId, "Reserved");
 
-    def offline_messages(self, groupId, friendId, last_online):
-        messages = self.messages[groupId]
+    def offline_messages(self, groupname, friendId, last_online):
+        messages = self.messages[groupname]
         to_send = filter(lambda msg: msg.date > last_online, messages)
         self.answer(friendId, "Messages from your last visit:")
         for msg in to_send:
@@ -232,7 +231,11 @@ class GroupBot(GenericBot):
     def on_conference_message(self, groupId, peerId, type, msg_text):
         name = self.conference_peer_get_name(groupId, peerId)
         msg = Message(name, msg_text)
-        self.messages[groupId].append(msg)
+
+        groups = [g for g in self.groups.values() if g.groupId == groupId]
+        if groups is not None:
+            group_name = groups[0].name
+            self.messages[group_name].append(msg)
 
         self.handle_gcommand(groupId, msg_text)
 
