@@ -26,7 +26,7 @@ from datetime import datetime
 from generic_bot import GenericBot, ToxOptions, ToxServer
 from pytox import Tox
 from os.path import exists
-from time import time
+from time import time, gmtime
 
 
 BOT_START = time()
@@ -67,7 +67,8 @@ class Message:
         self.text = text
 
     def __str__(self):
-        date = datetime.fromtimestamp(self.date).strftime('%H:%M:%S')
+        t = gmtime(self.date)
+        date = '%d:%d:%d' % (t.tm_hour, t.tm_min, t.tm_sec)
         return "[%s] %s: %s" % (date, self.name, self.text)
 
 
