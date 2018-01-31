@@ -123,6 +123,10 @@ class GroupBot(GenericBot):
 
         self.conference_invite(friendId, groupId)
 
+    def cmd_join(self, friendId, name, password=''):
+        '''41 Same as 'invite' '''
+        self.cmd_invite(friendId, name, password)
+
     def add_group(self, friendId, groupId, name, password):
         self.groups[name] = ToxGroup(name, self, groupId, password)
         self.messages[name] = []
