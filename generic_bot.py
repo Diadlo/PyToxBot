@@ -116,7 +116,10 @@ class GenericBot(Tox):
 
         with open(conf, 'rb') as f:
             for save in self.to_save:
-                setattr(self, save, pickle.load(f))
+                try:
+                    setattr(self, save, pickle.load(f))
+                except:
+                    pass
 
     def save_profile(self):
         with open(self.profile, 'wb') as f:

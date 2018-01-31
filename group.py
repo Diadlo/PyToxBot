@@ -89,7 +89,7 @@ class GroupBot(GenericBot):
         self.autohistory = {}
         # PK -> ToxGroup
         self.reserve = {}
-        self.to_save = ['autoinvite']
+        self.to_save = ['autoinvite', 'autohistory']
 
         print('ID: %s' % self.self_get_address())
 
