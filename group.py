@@ -53,10 +53,10 @@ class ToxGroup():
 
     def __str__(self):
         id = self.groupId
-        type = 'Text'
+        type = 'T'
         peers = self.tox.conference_peer_count(id)
         title = self.tox.conference_get_title(id)
-        template = '%s | %s | Peers: %d | Title: %s'
+        template = '%s | %s(%d) | %s'
         return template % (self.name, type, peers, title)
 
 
@@ -69,7 +69,7 @@ class Message:
     def __str__(self):
         t = gmtime(self.date)
         date = '%d:%d:%d' % (t.tm_hour, t.tm_min, t.tm_sec)
-        return "[%s] %s: %s" % (date, self.name, self.text)
+        return "[%s UTC] %s: %s" % (date, self.name, self.text)
 
 
 class GroupBot(GenericBot):
