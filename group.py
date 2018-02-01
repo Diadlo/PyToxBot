@@ -89,6 +89,8 @@ class GroupBot(GenericBot):
         self.autohistory = {}
         # PK -> ToxGroup
         self.reserve = {}
+        # friendId -> online
+        self.online = {}
         self.to_save = ['autoinvite', 'autohistory']
 
         print('ID: %s' % self.self_get_address())
@@ -210,12 +212,13 @@ class GroupBot(GenericBot):
         pk = self.friend_get_public_key(friendId)
 
         # Autohistory only for first group
-        if pk in self.autohistory:
+        try:
             groupname = self.autohistory[pk]
             groupId = self.groups[groupname].groupId
-            last_online = self.last_online.get(pk, -1)
-            if last_online != -1:
-                self.offline_messages(groupId, friendId, last_online)
+            last_online = self.last_online.get[pk]
+            self.offline_messages(groupId, friendId, last_online)
+        except:
+            pass
 
         autoinvite_groups = self.autoinvite[pk]
         for groupname in autoinvite_groups:
@@ -231,6 +234,13 @@ class GroupBot(GenericBot):
         if pk not in self.autoinvite:
             self.autoinvite[pk] = set()
 
+        if friendId not in self.online:
+            self.online[friendId] = False
+
+        if self.online[friendId] == online:
+            return
+
+        print("Friend %d: %d" % (friendId, online))
         self.online_count += 1 if online else -1
         if online:
             self.on_friend_come(friendId)
