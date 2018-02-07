@@ -180,7 +180,7 @@ class GenericBot(Tox):
 
     def handle_gcommand(self, groupId, message):
         ''' Handle command in group chat '''
-        temp = message.split(' ')
+        temp = message.strip().split(' ')
         name = temp[0]
         params = temp[1:]
         if name[0] != '!':

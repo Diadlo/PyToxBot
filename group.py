@@ -241,7 +241,6 @@ class GroupBot(GenericBot):
             return
 
         self.online[friendId] = online
-        print("Friend %d: %d" % (friendId, online))
         self.online_count += 1 if online else -1
         if online:
             self.on_friend_come(friendId)
